@@ -4,13 +4,14 @@ import pandas as pd
 import torch
 
 class GlucoseDataset(Dataset):
-    def __init__(self, zip_file_path, sub_directory, transform=None):
+    def __init__(self, zip_file_path, sub_directory, sample_length=16, transform=None):
         self.zip_file = ZipFile(zip_file_path, 'r')
         self.file_list = self.zip_file.namelist()  # Get list of files in the zip
         # Remove all files not in the subdirectory
         self.file_list = [file for file in self.file_list if file.startswith(sub_directory)]
         # Only load xls and xlsx files
         self.file_list = [file for file in self.file_list if file.endswith('.xls') or file.endswith('.xlsx')]
+        self.sample_length = sample_length
         self.transform = transform
 
         # Fetch the min and max values of the glucose values
@@ -18,10 +19,10 @@ class GlucoseDataset(Dataset):
         self.max = float('-inf')
         for file in self.file_list:
             glucose = self._fetch_raw_glucose_data(file)
-            self.min = min(self.min, glucose.min())
-            self.max = max(self.max, glucose.max())
+            self.min = min(self.min, glucose.min().item())
+            self.max = max(self.max, glucose.max().item())
 
-        self.sample_interval = 0.25 # 15 minutes
+        self.sample_interval = 0.25 * 60 # 15 minutes
 
     def __len__(self):
         return len(self.file_list)
