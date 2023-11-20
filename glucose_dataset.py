@@ -21,6 +21,8 @@ class GlucoseDataset(Dataset):
             self.min = min(self.min, glucose.min())
             self.max = max(self.max, glucose.max())
 
+        self.sample_interval = 0.25 # 15 minutes
+
     def __len__(self):
         return len(self.file_list)
 
