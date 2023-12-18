@@ -22,7 +22,7 @@ class GlucoseDataset(Dataset):
             self.min = min(self.min, glucose.min().item())
             self.max = max(self.max, glucose.max().item())
 
-        self.sample_interval = 0.25 * 60 # 15 minutes
+        self.sample_interval = 15 * 60 # 15 minutes in seconds
 
     def __len__(self):
         return len(self.file_list)
@@ -32,10 +32,10 @@ class GlucoseDataset(Dataset):
         normalized_glucose = (glucose - self.min) / (self.max - self.min)
         return normalized_glucose
         
-    def _fetch_raw_glucose_data(self, file: str) -> torch.Tensor:
-        with self.zip_file.open(file) as file:
+    def _fetch_raw_glucose_data(self, filename: str):
+        with self.zip_file.open(filename) as file:
             # Read the xlsx file
             df = pd.read_excel(file)
-            glucose = torch.tensor(df.iloc[:, 1].values, dtype=torch.float32)
+            glucose = torch.tensor(df.iloc[:, 1].values, dtype=torch.float32).unsqueeze(dim=-1).numpy()
             return glucose
         
