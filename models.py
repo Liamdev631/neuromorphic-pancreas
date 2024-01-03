@@ -1,30 +1,29 @@
-import snntorch as snn
-import torch.nn as nn
-import torch
-from snntorch import spikegen
+from rockpool.nn.modules import LinearTorch
+from rockpool.nn.combinators import Sequential, Residual
+from rockpool.parameters import Constant
+from rockpool.nn.modules import LIFTorch
 
-class GlucoseModel(nn.Module):
-    def __init__(self, num_inputs: int, num_hidden: int, num_outputs: int):
-        super().__init__()
-        self.fc1 = nn.Linear(num_inputs, num_hidden)
-        self.lif1 = snn.Leaky(beta=0.8)
-        self.fc2 = nn.Linear(num_hidden, num_outputs)
-        self.lif2 = snn.Leaky(beta=0.8)
+class GlucoseModel:
+    def __init__(self, num_inputs, num_hidden, num_outputs, dt):
+        self.num_in = num_inputs
+        self.num_hidden = num_hidden
+        self.num_out = num_outputs
+        self.dt = dt
+        self.tau_syn = 0.02
+        self.tau_mem = 0.02
 
-    def forward(self, x, steps=25):
-        mem1 = self.lif1.init_leaky()
-        mem2 = self.lif2.init_leaky()
+        self.net = Sequential(
+            # First FC layer
+            LinearTorch((self.num_in, self.num_hidden), has_bias=False),
+            LIFTorch(self.num_hidden, dt=self.dt, tau_syn=self.tau_syn, tau_mem=self.tau_mem),
 
-        spk2_rec = []
-        mem2_rec = []
+            # # Third FC layer
+            LinearTorch((self.num_hidden, self.num_out), has_bias=False),
+            LIFTorch(self.num_out, dt=self.dt, tau_syn=self.tau_syn, tau_mem=self.tau_mem),
+        )
+        # Scale down recurrent weights for stability
+        #self.net[2][1].w_rec.data = self.net[2][1].w_rec / 10. # type: ignore
+        print(self.net)
 
-        for spk_in in x:
-            cur1 = self.fc1(spk_in)
-            spk1, mem1 = self.lif1(cur1, mem1)
-            cur2 = self.fc2(spk1)
-            spk2, mem2 = self.lif2(cur2, mem2)
-
-            spk2_rec.append(spk2)
-            mem2_rec.append(mem2)
-
-        return torch.stack(spk2_rec, dim=0), torch.stack(mem2_rec, dim=0)
+    def __call__(self, x):
+        return self.net(x)
